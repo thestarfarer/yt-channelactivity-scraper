@@ -1,0 +1,22 @@
+{
+  "name": "yt-memberposts-scraper",
+  "version": "1.0.0",
+  "description": "Extract members-only community posts from YouTube channels",
+  "type": "module",
+  "main": "scrape.mjs",
+  "scripts": {
+    "scrape": "node scrape.mjs"
+  },
+  "keywords": [
+    "youtube",
+    "scraper",
+    "members",
+    "community-posts",
+    "membership"
+  ],
+  "author": "Mira <mira@starfarer>",
+  "license": "MIT",
+  "dependencies": {
+    "youtubei.js": "^12.2.0"
+  }
+}

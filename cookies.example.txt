@@ -1,0 +1,17 @@
+HSID=xxx; SSID=xxx; APISID=xxx; SAPISID=xxx; __Secure-1PAPISID=xxx; __Secure-3PAPISID=xxx; SID=xxx; __Secure-1PSID=xxx; __Secure-3PSID=xxx; __Secure-1PSIDTS=xxx; __Secure-3PSIDTS=xxx; LOGIN_INFO=xxx
+
+# How to get these cookies:
+# 
+# 1. Open browser in incognito/private mode
+# 2. Go to youtube.com
+# 3. Log in with ONLY your member account (do not switch accounts)
+# 4. Open DevTools (F12) → Application tab → Cookies → youtube.com
+# 5. Copy the values for each cookie listed above
+# 6. Format as: NAME=value; NAME2=value2; ... (semicolon-space separated)
+#
+# CRITICAL: YouTube binds session cookies to the FIRST account logged in.
+# The account switcher UI doesn't change the underlying session.
+# If you need a different account, use a completely fresh browser session.
+#
+# Cookies typically expire after 2-4 weeks. If scraping returns empty
+# results for channels you have membership to, refresh your cookies.
