@@ -1,18 +1,18 @@
 {
   "name": "yt-memberposts-scraper",
-  "version": "1.0.0",
-  "description": "Extract members-only community posts from YouTube channels",
+  "version": "2.0.0",
+  "description": "YouTube channel OSINT: community posts, videos, and streams",
   "type": "module",
-  "main": "scrape.mjs",
   "scripts": {
-    "scrape": "node scrape.mjs"
+    "osint": "node osint.mjs",
+    "posts": "node scrape.mjs",
+    "videos": "node videos.mjs"
   },
   "keywords": [
     "youtube",
     "scraper",
-    "members",
     "community-posts",
-    "membership"
+    "osint"
   ],
   "author": "Mira <mira@starfarer>",
   "license": "MIT",

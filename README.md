@@ -1,64 +1,51 @@
-# YouTube Members-Only Posts Scraper
+# YouTube Channel OSINT
 
-Extracts members-only community posts from YouTube channels using cookie authentication.
+Monitor YouTube channels: community posts, videos, and live streams.
 
-## Requirements
+Built for keeping tabs on VTubers and other creators. Pulls data via the internal YouTube API. Authenticated cookies let you see members-only content if you're subscribed.
 
-- Node.js 18+
-- Active YouTube membership for target channels
-- Cookies from authenticated session
+## Scripts
 
-## Installation
+| Script | Output | Use Case |
+|--------|--------|----------|
+| `osint.mjs` | Clean text to stdout | Quick status check, piping to other tools |
+| `scrape.mjs` | `community_posts.json` | Community posts with full metadata |
+| `videos.mjs` | `recent_videos.json` | Videos + streams with thumbnails, views, duration |
+
+## Quick Start
 
 ```bash
 npm install
+
+# Add your cookies (see below)
+cp cookies.example.txt cookies.txt
+
+# Edit channels in the script you want to run
+# Then:
+node osint.mjs 2>/dev/null     # Text summary
+node scrape.mjs 2>/dev/null    # Posts JSON
+node videos.mjs 2>/dev/null    # Videos JSON
 ```
 
-## Usage
+Always redirect stderr (`2>/dev/null`) — the library is chatty.
 
-1. Export cookies from a browser session where **only your member account** is logged in (critical - YouTube binds session to first logged-in account)
+## Output Examples
 
-2. Create `cookies.txt` with your cookies (see `cookies.example.txt` for format)
-
-3. Edit `scrape.mjs` to add target channel IDs:
-```javascript
-const CHANNELS = [
-  { name: 'Channel Name', id: 'UCxxxxxxxxxxxxxxxxxxxxxxx' },
-];
+### osint.mjs
+```
+# Channel Name
+Posts:
+- Full post text here (3 weeks ago)
+- Another post (2 months ago)
+Videos:
+- Video title — 9 days ago
+Streams:
+- [LIVE] Currently live stream — now
+- [UPCOMING] Scheduled stream — in 2 hours
+- Past stream title — 4 days ago
 ```
 
-4. Run:
-```bash
-node scrape.mjs
-```
-
-Output saves to `members_posts.json`
-
-## Getting Channel IDs
-
-- Go to channel page → View Page Source → search for `channelId` or `browse_id`
-- Or use: `https://www.youtube.com/channel/CHANNEL_ID_HERE`
-
-## Getting Cookies
-
-1. Open browser in incognito/private mode
-2. Log in to YouTube with **only** your member account (no account switching)
-3. Export cookies using browser extension or DevTools:
-   - DevTools → Application → Cookies → youtube.com
-   - Copy values for: `SID`, `HSID`, `SSID`, `APISID`, `SAPISID`, `LOGIN_INFO`, and all `__Secure-*` variants
-
-**Important**: If you have multiple Google accounts, YouTube binds the session cookies to whichever account was logged in first. The account switcher in YouTube's UI doesn't change the underlying session. Always use a fresh browser session with only the member account.
-
-## Key Endpoints Discovered
-
-| Params | Decodes To | Description |
-|--------|-----------|-------------|
-| `EgVwb3N0c_IGBAoCSgA=` | `posts` | Full members-only posts archive |
-| `EgptZW1iZXJzaGlwuAEA...` | `membership` | Membership page (preview, ~5 posts) |
-| `EgZ2aWRlb3PyBgQKAjoA` | `videos` | Members-only videos |
-
-## Output Format
-
+### scrape.mjs
 ```json
 {
   "Channel Name": [
@@ -68,26 +55,96 @@ Output saves to `members_posts.json`
       "text": "Post content...",
       "likes": "288",
       "hasImage": true,
-      "imageUrls": "https://..." 
+      "imageUrls": ["https://..."]
     }
   ]
 }
 ```
 
-## Cookie Expiration
+### videos.mjs
+```json
+{
+  "Channel Name": {
+    "videos": [
+      {
+        "id": "dQw4w9WgXcQ",
+        "title": "Video title",
+        "type": "video",
+        "duration": "3:32",
+        "views": "1.2M views",
+        "published": "2 days ago",
+        "url": "https://youtube.com/watch?v=dQw4w9WgXcQ"
+      }
+    ],
+    "streams": [
+      {
+        "id": "...",
+        "title": "Stream title",
+        "type": "live",
+        "duration": "live",
+        "views": "1.2K watching"
+      }
+    ]
+  }
+}
+```
 
-Cookies typically expire after a few weeks. Signs of expired cookies:
+## Configuration
+
+Each script has a `CHANNELS` array at the top:
+
+```javascript
+const CHANNELS = [
+  { name: 'Channel Name', id: 'UCxxxxxxxxxxxxxxxxxxxxxxx' },
+];
+```
+
+And limits you can adjust:
+```javascript
+const MAX_POSTS = 10;   // scrape.mjs, osint.mjs
+const MAX_VIDEOS = 5;   // videos.mjs, osint.mjs
+const MAX_STREAMS = 5;  // videos.mjs, osint.mjs
+```
+
+## Getting Channel IDs
+
+- From URL: `youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxxx`
+- From page source: search for `"channelId"` or `"externalId"`
+- From DevTools: Network tab → filter `browse` → check request payloads
+
+## Cookies
+
+**Critical**: YouTube binds session cookies to whichever Google account was logged in *first* in that browser session. The account switcher doesn't change the underlying session.
+
+To get working cookies:
+
+1. Open browser in **incognito/private mode**
+2. Log in with **only** the account that has memberships
+3. Export cookies (browser extension or DevTools → Application → Cookies)
+4. Save to `cookies.txt` in Netscape format
+
+Required cookies: `SID`, `HSID`, `SSID`, `APISID`, `SAPISID`, `LOGIN_INFO`, and all `__Secure-*` variants.
+
+### Cookie Expiration
+
+Cookies expire after a few weeks. Signs of expired cookies:
 - Empty results for channels you have membership to
-- Authentication errors in response
+- Authentication errors in responses
 
-Refresh by exporting new cookies from a fresh browser session.
+Re-export from a fresh browser session when this happens.
 
 ## Technical Notes
 
-- Uses `youtubei.js` library with raw API calls (`yt.actions.execute`) to bypass parser limitations
-- Recursive post extraction handles varying response structures
-- Follows continuation tokens automatically for full archive retrieval
-- Member status changes response structure enough to break the library's standard `getChannel()` parser - raw JSON extraction is more reliable
+- Uses `youtubei.js` for YouTube innertube API access
+- Community posts use a raw API call (`yt.actions.execute`) because the library's parser breaks on certain response structures
+- The magic params `EgVwb3N0c_IGBAoCSgA=` decode to the community posts tab
+- Stream types detected: `live` (currently streaming), `upcoming` (scheduled), `stream` (past VOD), `video` (regular upload)
+
+## Requirements
+
+- Node.js 18+
+- Authenticated session cookies
+- Active membership (only needed if you want members-only posts/videos)
 
 ## License
 

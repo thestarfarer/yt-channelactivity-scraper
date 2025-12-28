@@ -5,25 +5,20 @@ import fs from 'fs';
 // CONFIGURATION
 // ============================================================================
 
-// Load cookies from file or paste directly
-const COOKIES = fs.existsSync('./cookies.txt') 
-  ? fs.readFileSync('./cookies.txt', 'utf-8').trim()
-  : `PASTE_YOUR_COOKIES_HERE`;
+const COOKIES = fs.readFileSync('./cookies.txt', 'utf-8').trim();
+const MAX_POSTS = 10;  // Posts to fetch per channel (most recent)
 
-// Add channels to scrape (get ID from channel page source)
 const CHANNELS = [
   { name: 'Channel Name', id: 'UCxxxxxxxxxxxxxxxxxxxxxxx' },
   // { name: 'Another Channel', id: 'UCyyyyyyyyyyyyyyyyyyyyyyy' },
 ];
 
-// Output filename
-const OUTPUT_FILE = 'members_posts.json';
+const OUTPUT_FILE = 'community_posts.json';
 
 // ============================================================================
-// SCRAPER LOGIC (no need to modify)
+// SCRAPER
 // ============================================================================
 
-// Recursively find all backstagePostRenderer objects in response
 function findPosts(obj, posts = []) {
   if (!obj || typeof obj !== 'object') return posts;
   if (obj.backstagePostRenderer) posts.push(obj.backstagePostRenderer);
@@ -31,19 +26,8 @@ function findPosts(obj, posts = []) {
   return posts;
 }
 
-// Extract continuation token for pagination
-function findContinuation(obj) {
-  const str = JSON.stringify(obj);
-  const match = str.match(/"continuationCommand"[^}]*"token"\s*:\s*"([^"]+)"/);
-  return match?.[1];
-}
-
-// Transform raw post data into clean format
 function extractPost(p) {
-  // Handle single image
   const singleImage = p.backstageAttachment?.backstageImageRenderer?.image?.thumbnails?.slice(-1)?.[0]?.url;
-  
-  // Handle multiple images
   const multiImages = p.backstageAttachment?.postMultiImageRenderer?.images?.map(i => 
     i.backstageImageRenderer?.image?.thumbnails?.slice(-1)?.[0]?.url
   ).filter(Boolean);
@@ -58,7 +42,6 @@ function extractPost(p) {
   };
 }
 
-// Main scraper
 async function scrapeAllChannels() {
   console.log('Initializing YouTube client...');
   const yt = await Innertube.create({ cookie: COOKIES });
@@ -67,45 +50,21 @@ async function scrapeAllChannels() {
 
   for (const ch of CHANNELS) {
     console.log(`\n=== ${ch.name} ===`);
-    const posts = [];
-    let page = 1;
-
-    // Initial request - members-only posts endpoint
-    console.log(`  Page ${page}...`);
-    let response = await yt.actions.execute('/browse', {
+    
+    const response = await yt.actions.execute('/browse', {
       browseId: ch.id,
-      params: 'EgVwb3N0c_IGBAoCSgA='  // members-only posts
+      params: 'EgVwb3N0c_IGBAoCSgA='  // community posts tab
     });
 
-    posts.push(...findPosts(response.data));
-    let cont = findContinuation(response.data);
-
-    // Follow continuation tokens until exhausted
-    while (cont) {
-      page++;
-      console.log(`  Page ${page}...`);
-      response = await yt.actions.execute('/browse', { continuation: cont });
-      posts.push(...findPosts(response.data));
-      cont = findContinuation(response.data);
-    }
-
-    console.log(`  Total: ${posts.length} posts`);
+    const allPosts = findPosts(response.data);
+    const posts = allPosts.slice(0, MAX_POSTS);
+    
+    console.log(`  Found ${allPosts.length}, keeping top ${posts.length}`);
     output[ch.name] = posts.map(extractPost);
   }
 
-  // Save output
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(output, null, 2));
   console.log(`\n✓ Saved to ${OUTPUT_FILE}`);
-
-  // Summary
-  console.log('\n=== SUMMARY ===');
-  let total = 0;
-  for (const [name, posts] of Object.entries(output)) {
-    console.log(`${name}: ${posts.length} posts`);
-    total += posts.length;
-  }
-  console.log(`Total: ${total} posts`);
 }
 
-// Run
 scrapeAllChannels().catch(console.error);
